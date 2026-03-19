@@ -12,7 +12,7 @@ namespace ConexionSQL
         public int posicion;     // 4 bytes
     }
 
-    // ?? ESTRUCTURA para retornar resultados con métricas
+    // ESTRUCTURA para retornar resultados con métricas
     public struct ResultadoBusquedaIndice
     {
         public int? Posicion { get; set; }
