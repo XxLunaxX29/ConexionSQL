@@ -184,7 +184,7 @@ namespace ConexionSQL
             return resultado;
         }
 
-        //  BÚSQUEDA SECUENCIAL (NIVEL 1)
+        //  BUSQUEDA SECUENCIAL (NIVEL )
         public ResultadoBusquedaSecuencial BuscarSecuencial(int idBuscado)
         {
             var resultado = new ResultadoBusquedaSecuencial { Posicion = -1 };
