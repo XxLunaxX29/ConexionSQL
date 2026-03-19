@@ -60,14 +60,14 @@ namespace ConexionSQL
                         break;
 
                     string insert = @"
-IF NOT EXISTS (SELECT 1 FROM Ciudadano WHERE id = @id)
-BEGIN
-    INSERT INTO Ciudadano (id, Nombre, Edad)
-    VALUES (@id, @Nombre, @Edad)
-END";
+                    IF NOT EXISTS (SELECT 1 FROM Ciudadano WHERE id = @id)
+                    BEGIN
+                        INSERT INTO Ciudadano (id, Nombre, Edad)
+                        VALUES (@id, @Nombre, @Edad)
+                    END";
                     using var insertCmd = new SqlCommand(insert, connection);
                     insertCmd.Parameters.AddWithValue("@id", ciudadano.Value.id);
-                    insertCmd.Parameters.AddWithValue("@Nombre", ciudadano.Value.Nombre);
+                    insertCmd.Parameters.AddWithValue("@Nombre", ciudadano.Value.Nombre ?? "");
                     insertCmd.Parameters.AddWithValue("@Edad", ciudadano.Value.Edad);
 
                     await insertCmd.ExecuteNonQueryAsync();
@@ -78,16 +78,22 @@ END";
             }
             catch (SqlException ex)
             {
-                MessageBox.Show($"Error de SQL: {ex.Message}\n\nVerifica:\n- Que SQL Server esté en ejecución\n- Que TCP/IP esté habilitado\n- Que el firewall permita conexiones", "Error de Conexión");
+                throw new InvalidOperationException(
+                    $"Error de SQL: {ex.Message}\n\nVerifica:\n" +
+                    "- Que SQL Server esté en ejecución\n" +
+                    "- Que TCP/IP esté habilitado\n" +
+                    "- Que el firewall permita conexiones", ex);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error");
+                throw new InvalidOperationException($"Error al migrar: {ex.Message}", ex);
             }
         }
 
-        // NUEVO: Sincronizar un único ciudadano nuevo a SQL
-        public async Task SincronizarCiudadano(Ciudadano ciudadano)
+        /// <summary>
+        /// Sincroniza un ciudadano a SQL. Retorna true si tiene éxito, false si falla.
+        /// </summary>
+        public async Task<(bool Success, string Message)> SincronizarCiudadanoAsync(Ciudadano ciudadano)
         {
             try
             {
@@ -100,26 +106,43 @@ END";
                 await connection.OpenAsync();
 
                 string insert = @"
-IF NOT EXISTS (SELECT 1 FROM Ciudadano WHERE id = @id)
-BEGIN
-    INSERT INTO Ciudadano (id, Nombre, Edad)
-    VALUES (@id, @Nombre, @Edad)
-END";
+                IF NOT EXISTS (SELECT 1 FROM Ciudadano WHERE id = @id)
+                BEGIN
+                    INSERT INTO Ciudadano (id, Nombre, Edad)
+                    VALUES (@id, @Nombre, @Edad)
+                END";
 
                 using var cmd = new SqlCommand(insert, connection);
                 cmd.Parameters.AddWithValue("@id", ciudadano.id);
                 cmd.Parameters.AddWithValue("@Nombre", ciudadano.Nombre ?? "");
                 cmd.Parameters.AddWithValue("@Edad", ciudadano.Edad);
 
-                await cmd.ExecuteNonQueryAsync();
+                int rowsAffected = await cmd.ExecuteNonQueryAsync();
+                
+                if (rowsAffected > 0)
+                {
+                    return (true, $"Ciudadano {ciudadano.id} sincronizado a SQL");
+                }
+                else
+                {
+                    return (false, $"ID {ciudadano.id} ya existe en SQL");
+                }
+            }
+            catch (SqlException ex) when (ex.Number == -1)
+            {
+                return (false, $"Error de conexión: Timeout o instancia no encontrada");
+            }
+            catch (SqlException ex) when (ex.Number == 18456)
+            {
+                return (false, $"Error de autenticación: Credenciales incorrectas");
             }
             catch (SqlException ex)
             {
-                MessageBox.Show($"Error al sincronizar a SQL: {ex.Message}", "Error de Sincronización");
+                return (false, $"Error de SQL: {ex.Message}");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error");
+                return (false, $"Error: {ex.Message}");
             }
         }
 
@@ -167,11 +190,11 @@ END";
             }
             catch (SqlException ex)
             {
-                MessageBox.Show($"Error de SQL: {ex.Message}", "Error de Conexión");
+                throw new InvalidOperationException($"Error de SQL: {ex.Message}", ex);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error: {ex.Message}", "Error");
+                throw new InvalidOperationException($"Error: {ex.Message}", ex);
             }
         }
     }

@@ -17,7 +17,7 @@ namespace ConexionSQL
         private int posicionActual = 0;
         private const int REGISTROS_POR_PAGINA = 100;
 
-        string connectionString = "Server=192.168.0.43,1433;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False;";
+        string connectionString = "Server=172.20.10.3,1433;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False;";
 
         private MigradorSQL migrador;
 
@@ -29,7 +29,8 @@ namespace ConexionSQL
 
             _ = CargarDatosAsync();
 
-            migrador = new MigradorSQL("Server=192.168.0.43,1433;User Id=sa;Password=123;TrustServerCertificate=True;Encrypt=False;");
+            // ? USAR LA MISMA CONNECTIONSTRING
+            migrador = new MigradorSQL(connectionString);
         }
 
         private async Task CargarDatosAsync()
@@ -47,7 +48,7 @@ namespace ConexionSQL
 
                 _ = Task.Run(() => GenerarIndiceEnBackground());
 
-                MostrarResultado($"? Datos cargados correctamente\n({posicionActual:N0} registros)", "success");
+                MostrarResultado($"Datos cargados correctamente\n({posicionActual:N0} registros)", "success");
             }
             catch (Exception ex)
             {
@@ -231,9 +232,18 @@ namespace ConexionSQL
                 posicionActual++;
                 AgregarAlGrid(ciudadano);
 
-                await migrador.SincronizarCiudadano(ciudadano);
+                //  ESPERAR RESULTADO Y VERIFICAR ANTES DE MOSTRAR ÉXITO
+                var (success, message) = await migrador.SincronizarCiudadanoAsync(ciudadano);
 
-                MostrarResultado($"Ciudadano guardado (ID: {nuevoId})\n? Sincronizado a SQL", "success");
+                if (success)
+                {
+                    MostrarResultado($"Ciudadano guardado (ID: {nuevoId})\n? Sincronizado a SQL", "success");
+                }
+                else
+                {
+                    MostrarResultado($"Ciudadano guardado localmente (ID: {nuevoId})\n{message}", "info");
+                }
+
                 Limpiar();
                 txtId.Text = (nuevoId + 1).ToString();
             }
@@ -283,7 +293,7 @@ namespace ConexionSQL
                         txtNombre.Text = ciudadano.Value.Nombre;
                         txtEdad.Text = ciudadano.Value.Edad.ToString();
 
-                        // ?? Mostrar en el panel
+                        //  Mostrar en el panel
                         MostrarComparativa(tiempoL1, tiempoL2, posicionL2.Value, ciudadano.Value);
                         MostrarResultado($"? Ciudadano encontrado\nID: {ciudadano.Value.id}\nNombre: {ciudadano.Value.Nombre}", "success");
                     }
@@ -329,7 +339,7 @@ namespace ConexionSQL
 
             try
             {
-                diagnostico.AppendLine("? 1. Ping a 192.168.0.43");
+                diagnostico.AppendLine("? 1. Ping a 172.20.10.3");
                 diagnostico.AppendLine("\n? 2. Probando conexión a SQL Server...");
                 using var connection = new Microsoft.Data.SqlClient.SqlConnection(connectionString);
                 await connection.OpenAsync();
@@ -409,7 +419,7 @@ namespace ConexionSQL
                         ciudadano
                     );
 
-                    MostrarResultado($"? Ciudadano encontrado\nID: {ciudadano.id}\nNombre: {ciudadano.Nombre}", "success");
+                    MostrarResultado($"Ciudadano encontrado\nID: {ciudadano.id}\nNombre: {ciudadano.Nombre}", "success");
                 }
                 else
                 {

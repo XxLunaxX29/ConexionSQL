@@ -62,7 +62,7 @@ namespace ConexionSQL
                 posicion++;
             }
 
-            Console.WriteLine($"? Índice generado: {_archivoIndice} ({posicion:N0} registros)");
+            Console.WriteLine($"Índice generado: {_archivoIndice} ({posicion:N0} registros)");
         }
 
         //  BUSCAR POR ID (CON MÉTRICAS)
